@@ -86,8 +86,8 @@
   [project & args]
   (let [options (:rpmbuild project)]
     (condp = (first args)
-      "-gs" (genspec project options)
+      "-spec" (genspec project options)
       "-ba" (buildall project options)
       "-bb" (buildbin project options)
       "-bs" (buildsrc project options)
-      (lein/warn "use \"-ba\", \"-bb\", \"-bs\" or \"-gs\""))))
+      (lein/warn "Error: one option needed from \"-ba\", \"-bb\", \"-bs\" or \"-spec\""))))
