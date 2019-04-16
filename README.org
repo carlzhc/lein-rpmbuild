@@ -9,11 +9,22 @@ You can install it by running below command in your CentOS/RHEL:
 
   : yum install -y rpm-build
 
+
+To use git log as RPM's changelog, you need to use git version 2.6.0 or above.
+Use below commands to update the git package to the latest version in your CentOS/RHEL:
+
+  : sudo yum remove -y git
+  : sudo yum -y install https://centos7.iuscommunity.org/ius-release.rpm
+  : sudo yum -y install git2u-all
+
+
+
 ** Insatllation
 
 Add the following dependency to the =:plugins= vector of your =project.clj=.
 
 [[https://clojars.org/lein-rpmbuild][https://clojars.org/lein-rpmbuild/latest-version.svg]]
+
 
 ** Usage
 
@@ -39,21 +50,21 @@ Add parameters in your =project.clj=, like this:
    })
 #+END_SRC
 
-To generate RPM package, run:
+To build RPM package, run:
 
-- Generate binary package only:
-  : lein rpmbuild -bb
+- Build binary package only:
+  : lein rpmbuild -tb
 
-- Generate source package only:
-  : lein rpmbuild -bs
+- Build source package only:
+  : lein rpmbuild -ts
 
-- Generate both binary and source packages:
-  : lein rpmbuild -ba
+- Build both binary and source packages:
+  : lein rpmbuild -ta
 
-- Generate rpm spec file only:
+- Create rpm spec file only:
   : lein rpmbuild -spec
 
-RPM and SPEC files are generated in =target= folder.
+The SPEC file is created in =pkg= folder, and the RPM packages are generated in =~/rpmbuild/RPMS/= folder.
 
 ** License
 
