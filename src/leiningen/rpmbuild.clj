@@ -11,23 +11,32 @@
   (let [result (shell/sh "git" "log" "--pretty=format:* %ad %an <%ae> - %h %n- %s%n" "--date=format:%a %b %d %Y")]
     (if (zero? (:exit result)) (:out result) nil)))
 
-(defn- newlinejoin
-  "Use newline to join elements in collection"
-  [acol]
+(defn- join-with
+  [s acol]
   (if (coll? acol)
-    (str/join "\n" acol)
+    (str/join s acol)
     acol))
 
-(defn- tagformat
+(defn- join-with-newline
+  "Use newline to join elements in collection"
+  [acol]
+  (join-with "\n" acol))
+
+(defn- join-with-space
+  "Use single space to join elements in collection"
+  [acol]
+  (join-with " " acol))
+
+(defn- format-tag
   [tagname tagval]
   (format "%-16s%s\n" (str tagname ":") tagval))
 
-(defn- genspec
+(defn- gen-spec
   "Generate a RPM spec file"
   [project
    {:keys [Name Version Release Summary Group License URL BuildArch BuildRoot Prefix Requires
            Source0 Source1 Source2 Source3 Source4 Source5 Source6 Source7 Source8 Source9
-           %description %prep %install %clean %post %files %changelog %doc
+           %description %prep %install %clean %post %files %changelog %doc %config %defattr
            %define %undefine %global]
     :as options}]
   (let [pkg (io/file (:root project) "pkg")
@@ -44,66 +53,73 @@
         (doseq [line %undefine]
           (.write spec (format "%%undefine %s %s\n" (first line) (second line)))))
       (when (or %global %define %undefine) (.newLine spec))
-      (.write spec (tagformat "Name" (or Name (:name project))))
-      (.write spec (tagformat "Version" (or Version (:version project))))
-      (.write spec (tagformat "Release" (or Release "1%{?dist}")))
-      (.write spec (tagformat "Summary" (or Summary (newlinejoin (:description project)))))
-      (.write spec (tagformat "Group" (or Group "Application")))
-      (.write spec (tagformat "License" (or License (:name (:license project)))))
-      (.write spec (tagformat "URL" (or URL (:url project))))
-      (.write spec (tagformat "Source0" (or Source0 "%{name}-%{version}.tar.gz")))
+      (.write spec (format-tag "Name" (or Name (:name project))))
+      (.write spec (format-tag "Version" (or Version (:version project))))
+      (.write spec (format-tag "Release" (or Release "1%{?dist}")))
+      (.write spec (format-tag "Summary" (or Summary (join-with-newline (:description project)))))
+      (.write spec (format-tag "Group" (or Group "Application")))
+      (.write spec (format-tag "License" (or License (:name (:license project)))))
+      (.write spec (format-tag "URL" (or URL (:url project))))
+      (.write spec (format-tag "Source0" (or Source0 "%{name}-%{version}.tar.gz")))
       (doseq [n (range 1 10)]
         (when-let [v (get options (str "Source" n))]
-          (.write spec (tagformat (str "Source" n) v))))
-      (.write spec (tagformat "BuildRoot"
+          (.write spec (format-tag (str "Source" n) v))))
+      (.write spec (format-tag "BuildRoot"
                            (or BuildRoot "%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)")))
-      (.write spec (tagformat "BuildArch" (or BuildArch "noarch")))
+      (.write spec (format-tag "BuildArch" (or BuildArch "noarch")))
 
       (when Prefix
-        (.write spec (tagformat "Prefix" Prefix)))
+        (.write spec (format-tag "Prefix" Prefix)))
       
       (when Requires
         (doseq [r Requires]
-          (.write spec (tagformat "Requires" r))))
+          (.write spec (format-tag "Requires" r))))
 
       (.newLine spec)
       (.write spec (format "%%description\n%s\n"
-                           (newlinejoin (or %description (:description project)))))
+                           (join-with-newline (or %description (:description project)))))
 
       (.newLine spec)
       (.write spec (format "%%prep\n%s\n"
-                           (newlinejoin (or %prep ["%autosetup -v"]))))
+                           (join-with-newline (or %prep ["%autosetup -v"]))))
 
       (.newLine spec)
       (.write spec (format "%%install\n%s\n"
-                           (newlinejoin (or %install
-                                            ["rm -f *.spec build.clj"
-                                             (str "mkdir -p $RPM_BUILD_ROOT" Prefix)
-                                             (str "cp -ar . $RPM_BUILD_ROOT" Prefix)]))))
+                           (join-with-newline (or %install
+                                                  (->
+                                                   ["rm -f *.spec build.clj"
+                                                    (str "mkdir -p $RPM_BUILD_ROOT" Prefix)
+                                                    (str "cp -pr . $RPM_BUILD_ROOT" Prefix)]
+                                                   (concat
+                                                    (when %doc
+                                                      (map #(str "rm -f $RPM_BUILD_ROOT" Prefix "/" %) %doc))))))))
 
       (.newLine spec)
       (.write spec (format "%%clean\n%s\n"
-                           (newlinejoin (or %clean
+                           (join-with-newline (or %clean
                                             ["rm -rf $RPM_BUILD_ROOT"]))))
 
       (when %post
         (.newLine spec)
-        (.write spec (format "%%post\n%s\n" (newlinejoin %post))))
+        (.write spec (format "%%post\n%s\n" (join-with-newline %post))))
 
       (.newLine spec)
-      (.write spec (format "%%files\n%s\n"
-                           (newlinejoin (or %files
-                                            ["%defattr(-,root,root,-)"
-                                             (str Prefix "/*")]))))
+      (.write spec (format "%%files\n%%defattr(%s)\n%s\n"
+                           (join-with "," (or %defattr ["-" "root" "root" "-"]))
+                           (join-with-newline (or %files (str Prefix "/*")))))
       (when %doc
         (.write spec (format "%%doc %s\n"
-                             (newlinejoin %doc))))
+                             (join-with-space %doc))))
 
+      (when %config
+        (.write spec (format "%%config %s\n"
+                             (join-with-space %config))))
+      
       (when %changelog
         (.newLine spec)
         (if (= :gitlog %changelog)
           (.write spec (format "%%changelog\n%s\n" (gitlog)))
-          (.write spec (format "%%changelog\n%s\n" (newlinejoin %changelog))))))
+          (.write spec (format "%%changelog\n%s\n" (join-with-newline %changelog))))))
     
     (lein/info "Wrote" (.getCanonicalPath specfile))
     (assoc-in project [:rpmbuild :spec] (.getCanonicalPath specfile))))
@@ -126,18 +142,20 @@
   [project & args]
   (let [options (:rpmbuild project)]
     (condp = (first args)
-      "-spec" (genspec project options)
-      "-tar" (do (genspec project options) (maketarball project))
+      "-spec" (gen-spec project options)
+      "-tar" (do (-> project
+                 (gen-spec options)
+                 (maketarball)))
       "-ta" (do (-> project
-                 (genspec options)
+                 (gen-spec options)
                  (maketarball)
                  (buildrpm "-ta")))
       "-tb" (do (-> project
-                 (genspec options)
+                 (gen-spec options)
                  (maketarball)
                  (buildrpm "-tb")))
       "-ts" (do (-> project
-                 (genspec options)
+                 (gen-spec options)
                  (maketarball)
                  (buildrpm "-ts")))
       (lein/warn "Error: one option needed from \"-ta\", \"-tb\", \"-ts\" or \"-spec\""))))

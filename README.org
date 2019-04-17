@@ -32,21 +32,27 @@ Add parameters in your =project.clj=, like this:
 
 #+BEGIN_SRC: clojure
 (defproject my-awesome-project "1.1.1"
-  :plugins [[lein-rpmbuild "X.X.X"]]
-  :rpmbuild {:Name  "RPM-PACKAGE-NAME" ;; default is the project name.
-             :Version "X.X.X"          ;; default is the project version.
-             :Release "1"              ;; default is "1%{?dist}".
+  :plugins [[carlzhc/lein-tar "3.3.0"
+            [lein-rpmbuild "X.X.X"]]
+  :rpmbuild {:Name  "RPM-PACKAGE-NAME" ;; Default is the project name.
+             :Version "X.X.X"          ;; Default is the project version.
+             :Release "1"              ;; Default is "1%{?dist}".
              :Source1 "PATH-TO-SOURCE" ;; Additional sources, support from Source1 to Source9.
              :Requires ["RPM" ...]     ;; Dependencies of other RPM packages.
-             :%prep   "COMMANDS TO UNPACK THE SOURCES"    ;; default is "%autosetup -v".
-             :%build  "COMMANDS TO BUILD PROJECT"         ;; default is no command to run.
-             :%install "COMMANDS TO INSTALL FILES"        ;; default is to copy all files in BUILDROOT folder into RPM.
-             :%files ["PATH-TO-FILE" ...]                 ;; files which need to be packed to RPM.
-             :%pre  "COMMANDS TO RUN IN %pre SECTION"     ;; default is no command to run.
-             :%post "COMMANDS TO RUN IN %post SECTION"    ;; default is no command to run.
-             :%changelog ["RPM BUILD CHANGE LOG 1" ...] or :gitlog
-                                                          ;; when using :gitlog, it will get git log as RPM change log.
-             :%define [["VAR-NAME" "VAR-VALUE"] ...]      ;; define additional macros
+             :Prefix "PATH"            ;; Destination directory of installation.
+             :%prep   "COMMANDS TO UNPACK THE SOURCES"    ;; Default is "%autosetup -v".
+             :%build  "COMMANDS TO BUILD PROJECT"         ;; Default is no command to run.
+             :%install "COMMANDS TO INSTALL FILES"        ;; Default is to copy all files in BUILDROOT folder into RPM.
+             :%files ["PATH-TO-FILE" ...]                 ;; Files which need to be packed to RPM.
+             :%doc ["FILE-NAME" ...]                      ;; Files to be packed as documentation, need to be in "pkg/" folder.
+             :%config ["FILE-NAME" ...]                   ;; Files to be packed as configuration.
+             :%pre  "COMMANDS TO RUN IN %pre SECTION"     ;; Default is no command to run.
+             :%post "COMMANDS TO RUN IN %post SECTION"    ;; Default is no command to run.
+             :%changelog ["RPM BUILD CHANGE LOG 1" ...] or [:gitlog latest-log-number]
+                                                          ;; When using :gitlog, it will get git log as RPM change log.
+             :%define [["VAR-NAME" "VAR-VALUE"] ...]      ;; Define additional macros
+             :%global [["VAR-NAME" "VAR-VALUE"] ...]      ;; Define additional global macros
+             :%undefine ["VAR-NAME" ...]                  ;; Undefine macros
    })
 #+END_SRC
 
