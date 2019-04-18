@@ -112,8 +112,9 @@
                              (join-with-space %doc))))
 
       (when %config
-        (.write spec (format "%%config %s\n"
-                             (join-with-space %config))))
+        (.write spec (if (string? %config)
+                       (format "%%config %s\n" %config)
+                       (join-with-newline (map #(format "%%config %s" %) %config)))))
       
       (when %changelog
         (.newLine spec)
