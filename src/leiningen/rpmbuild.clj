@@ -102,7 +102,8 @@
                                                     (str "cp -pr . $RPM_BUILD_ROOT" Prefix)]
                                                    (concat
                                                     (when %doc
-                                                      (map #(str "rm -f $RPM_BUILD_ROOT" Prefix "/" %) %doc))))))))
+                                                      (map #(str "rm -f $RPM_BUILD_ROOT" Prefix "/" %)
+                                                           (remove #(str/index-of % \/) %doc)))))))))
 
       (.newLine spec)
       (.write spec (format "%%clean\n%s\n"
@@ -118,8 +119,14 @@
                            (join-with "," (or %defattr ["-" "root" "root" "-"]))
                            (join-with-newline (or %files (str Prefix "/*")))))
       (when %doc
-        (.write spec (format "%%doc %s\n"
-                             (join-with-space %doc))))
+        (doseq [doc %doc]
+          (.write spec (format "%%doc %s\n"
+                               (if (or (nil? Prefix)
+                                       (str/starts-with? doc "/")
+                                       (str/starts-with? doc "%{prefix}/")
+                                       (not (str/index-of doc \/)))
+                                 doc
+                                 (str "%{prefix}/" doc))))))
 
       (when %config
         (.write spec (if (string? %config)
