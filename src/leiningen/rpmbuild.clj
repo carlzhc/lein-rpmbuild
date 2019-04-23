@@ -36,7 +36,7 @@
   [project
    {:keys [Name Version Release Summary Group License URL BuildArch BuildRoot Prefix Requires
            Source0 Source1 Source2 Source3 Source4 Source5 Source6 Source7 Source8 Source9
-           %description %prep %install %clean %post %files %changelog %doc %config %defattr
+           %description %prep %build %check %install %clean %post %files %changelog %doc %config %defattr
            %define %undefine %global]
     :as options}]
   (let [pkg (io/file (:root project) "pkg")
@@ -82,6 +82,16 @@
       (.newLine spec)
       (.write spec (format "%%prep\n%s\n"
                            (join-with-newline (or %prep ["%autosetup -v"]))))
+
+      (when %build
+        (.newLine spec)
+        (.write spec (format "%%build\n%s\n"
+                             (join-with-newline %build))))
+
+      (when %check
+        (.newLine spec)
+        (.write spec (format "%%check\n%s\n"
+                             (join-with-newline %check))))
 
       (.newLine spec)
       (.write spec (format "%%install\n%s\n"
