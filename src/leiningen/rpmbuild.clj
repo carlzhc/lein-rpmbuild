@@ -71,12 +71,12 @@
         (when-let [v (get options (str "Source" n))]
           (.write spec (format-tag (str "Source" n) v))))
       (.write spec (format-tag "BuildRoot"
-                           (or BuildRoot "%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)")))
+                               (or BuildRoot "%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)")))
       (.write spec (format-tag "BuildArch" (or BuildArch "noarch")))
 
       (when Prefix
         (.write spec (format-tag "Prefix" Prefix)))
-      
+
       (when Requires
         (doseq [r Requires]
           (.write spec (format-tag "Requires" r))))
@@ -100,30 +100,40 @@
                              (join-with-newline %check))))
 
       (.newLine spec)
-      (.write spec (format "%%install\n%s\n"
-                           (join-with-newline (or %install
-                                                  (->
-                                                   ["rm -f *.spec build.clj"
-                                                    (str "mkdir -p $RPM_BUILD_ROOT" Prefix)
-                                                    (str "cp -pr . $RPM_BUILD_ROOT" Prefix)]
-                                                   (concat
-                                                    (when %doc
-                                                      (map #(str "rm -f $RPM_BUILD_ROOT" Prefix "/" %)
-                                                           (remove #(str/index-of % \/) %doc)))))))))
+      (.write spec
+              (format
+               "%%install\n%s\n"
+               (join-with-newline
+                (or %install
+                    (->
+                     ["rm -f *.spec build.clj"
+                      (str "mkdir -p $RPM_BUILD_ROOT" Prefix)
+                      (str "cp -pr . $RPM_BUILD_ROOT" Prefix)]
+                     (concat
+                      (when %doc
+                        (map #(str "rm -f $RPM_BUILD_ROOT" Prefix "/" %)
+                             (remove #(str/index-of % \/) %doc))))
+                     (concat [(str  "find $RPM_BUILD_ROOT -type f -printf '/%%P\\n'"
+                                    " >%{_tmppath}/%{name}-%{version}-%{release}.filelist")]))))))
 
       (.newLine spec)
-      (.write spec (format "%%clean\n%s\n"
-                           (join-with-newline (or %clean
-                                            ["rm -rf $RPM_BUILD_ROOT"]))))
+      (.write spec
+              (format
+               "%%clean\n%s\n"
+               (join-with-newline
+                (or %clean
+                    ["rm -rf $RPM_BUILD_ROOT"
+                     "rm -f %{_tmppath}/%{name}-%{version}-%{release}.filelist"]))))
 
       (when %post
         (.newLine spec)
         (.write spec (format "%%post\n%s\n" (join-with-newline %post))))
 
       (.newLine spec)
-      (.write spec (format "%%files\n%%defattr(%s)\n%s\n"
+      (.write spec (format "%%files%s\n%%defattr(%s)\n%s\n"
+                           (or %files " -f %{_tmppath}/%{name}-%{version}-%{release}.filelist")
                            (join-with "," (or %defattr ["-" "root" "root" "-"]))
-                           (join-with-newline (or %files (str Prefix "/*")))))
+                           (join-with-newline (str %files))))
       (when %doc
         (doseq [doc %doc]
           (.write spec (format "%%doc %s\n"
@@ -138,13 +148,13 @@
         (.write spec (if (string? %config)
                        (format "%%config %s\n" %config)
                        (join-with-newline (map #(format "%%config %s" %) %config)))))
-      
+
       (when %changelog
         (.newLine spec)
         (if (= :gitlog %changelog)
           (.write spec (format "%%changelog\n%s\n" (gitlog)))
           (.write spec (format "%%changelog\n%s\n" (join-with-newline %changelog))))))
-    
+
     (lein/info "Wrote" (.getCanonicalPath specfile))
     (assoc-in project [:rpmbuild :spec] (.getCanonicalPath specfile))))
 
