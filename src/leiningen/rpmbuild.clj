@@ -3,7 +3,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.java.shell :as shell]
-            [leiningen.tar :refer [tar]]))
+            [leiningen.tar :as tar]))
 
 (defn- gitlog
   "Generate changelog from git log"
@@ -35,7 +35,7 @@
   "Generate a RPM spec file"
   [project
    {:keys [Name Version Release Summary Group License URL BuildArch BuildRoot Prefix Requires
-           Source0 Source1 Source2 Source3 Source4 Source5 Source6 Source7 Source8 Source9
+           Source Source0 Source1 Source2 Source3 Source4 Source5 Source6 Source7 Source8 Source9
            %description %prep %build %check %install %clean %post %files %changelog %doc %config %defattr
            %define %undefine %global]
     :as options}]
@@ -60,7 +60,13 @@
       (.write spec (format-tag "Group" (or Group "Application")))
       (.write spec (format-tag "License" (or License (:name (:license project)))))
       (.write spec (format-tag "URL" (or URL (:url project))))
-      (.write spec (format-tag "Source0" (or Source0 "%{name}-%{version}.tar.gz")))
+      (.write spec (format-tag "Source0" (or Source0 Source
+                                             (str (get-in project [:tar :name]
+                                                          (tar/release-name project))
+                                                  "."
+                                                  (str/replace
+                                                   (name (get-in project [:tar :format] :tar))
+                                                   \- \.)))))
       (doseq [n (range 1 10)]
         (when-let [v (get options (str "Source" n))]
           (.write spec (format-tag (str "Source" n) v))))
@@ -145,15 +151,15 @@
 
 (defn- maketarball
   [project & args]
-  (let [tarball (apply tar project args)]
-    (assoc-in project [:rpmbuild :tarball] tarball)))
+  (let [tarball (apply tar/tar project args)]
+    (assoc-in project [:rpmbuild :_tarball] tarball)))
 
 (defn- buildrpm [proj act]
-  (let [tarball (get-in proj [:rpmbuild :tarball])
+  (let [tarball (get-in proj [:rpmbuild :_tarball])
         result (shell/sh "rpmbuild" act tarball)]
     (if (zero? (:exit result))
       (lein/info (:out result))
-      (lein/warn (:err result)))))
+      (lein/abort (:err result)))))
 
 (defn rpmbuild
   "Build RPM package from project's files"
@@ -161,19 +167,19 @@
   (let [options (:rpmbuild project)]
     (condp = (first args)
       "-spec" (gen-spec project options)
-      "-tar" (do (-> project
+      "-tar" (-> project
                  (gen-spec options)
-                 (maketarball)))
-      "-ta" (do (-> project
-                 (gen-spec options)
-                 (maketarball)
-                 (buildrpm "-ta")))
-      "-tb" (do (-> project
-                 (gen-spec options)
-                 (maketarball)
-                 (buildrpm "-tb")))
-      "-ts" (do (-> project
-                 (gen-spec options)
-                 (maketarball)
-                 (buildrpm "-ts")))
+                 (maketarball))
+      "-ta" (-> project
+                (gen-spec options)
+                (maketarball)
+                (buildrpm "-ta"))
+      "-tb" (-> project
+                (gen-spec options)
+                (maketarball)
+                (buildrpm "-tb"))
+      "-ts" (-> project
+                (gen-spec options)
+                (maketarball)
+                (buildrpm "-ts"))
       (lein/warn "Error: one option needed from \"-ta\", \"-tb\", \"-ts\" or \"-spec\""))))
