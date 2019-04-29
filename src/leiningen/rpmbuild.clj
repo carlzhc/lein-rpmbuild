@@ -44,14 +44,14 @@
         specfile (io/file pkg (str (or Name (:name project)) ".spec"))]
     (with-open [spec (io/writer specfile)]
       (when %global
-        (doseq [line %global]
+        (doseq [line (partition 2 %global)]
           (.write spec (format "%%global %s %s\n" (first line) (second line)))))
       (when %define
-        (doseq [line %define]
+        (doseq [line (partition 2 %define)]
           (.write spec (format "%%define %s %s\n" (first line) (second line)))))
       (when %undefine
         (doseq [line %undefine]
-          (.write spec (format "%%undefine %s %s\n" (first line) (second line)))))
+          (.write spec (format "%%undefine %s\n" line))))
       (when (or %global %define %undefine) (.newLine spec))
       (.write spec (format-tag "Name" (or Name (:name project))))
       (.write spec (format-tag "Version" (or Version (:version project))))
@@ -114,7 +114,7 @@
                         (map #(str "rm -f $RPM_BUILD_ROOT" Prefix "/" %)
                              (remove #(str/index-of % \/) %doc))))
                      (concat [(str  "find $RPM_BUILD_ROOT -type f -printf '/%%P\\n'"
-                                    " >%{_tmppath}/%{name}-%{version}-%{release}.filelist")]))))))
+                                    " > %{u2p:%{buildroot}}.filelist")]))))))
 
       (.newLine spec)
       (.write spec
@@ -122,8 +122,7 @@
                "%%clean\n%s\n"
                (join-with-newline
                 (or %clean
-                    ["rm -rf $RPM_BUILD_ROOT"
-                     "rm -f %{_tmppath}/%{name}-%{version}-%{release}.filelist"]))))
+                    ["rm -rf $RPM_BUILD_ROOT %{u2p:%{buildroot}}.filelist"]))))
 
       (when %post
         (.newLine spec)
@@ -131,7 +130,7 @@
 
       (.newLine spec)
       (.write spec (format "%%files%s\n%%defattr(%s)\n%s\n"
-                           (or %files " -f %{_tmppath}/%{name}-%{version}-%{release}.filelist")
+                           (or %files " -f %{u2p:%{buildroot}}.filelist")
                            (join-with "," (or %defattr ["-" "root" "root" "-"]))
                            (join-with-newline (str %files))))
       (when %doc
