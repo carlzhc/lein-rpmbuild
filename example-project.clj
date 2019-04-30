@@ -7,12 +7,12 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :eval-in-leiningen true
   :plugins [[carlzhc/lein-tar "3.3.0.1"]
-            [lein-rpmbuild "0.1.1"]]
+            [lein-rpmbuild "0.1.3"]]
   :tar {:ubergar true
         :format :tar-gz}
-  :rpmbuild {:%define [["__os_install_post" "%{nil}"]]
+  :rpmbuild {:%define ["__os_install_post" "%{nil}"]
              :Requires ["java-1.8.0-openjdk"]
              :Prefix "/opt/%name"
              :%changelog :gitlog
-             :%doc ["README.org"]})
+             :%doc ["doc/README.org"]})
 
