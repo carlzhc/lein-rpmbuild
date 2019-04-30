@@ -21,40 +21,52 @@ Use below commands to update the git package to the latest version in your CentO
 
 ** Insatllation
 
-Add the following dependency to the =:plugins= vector of your =project.clj=.
+Add the following to the =:plugins= vector of your =project.clj=.
 
-[[https://clojars.org/lein-rpmbuild][https://clojars.org/lein-rpmbuild/latest-version.svg]]
+[[https://clojars.org/lein-rpmbuild][https://img.shields.io/clojars/v/lein-rpmbuild.svg]]
 
+** Dependencies
+
+This plugin also uses =lein-tar= plugin to make a tarball before making a RPM.
+Add below dependency to the =:plugins= vector of your =project.clj=.
+
+[[https://clojars.org/carlzhc/lein-tar][https://img.shields.io/clojars/v/carlzhc/lein-tar.svg]]
 
 ** Usage
 
-Add parameters in your =project.clj=, like this:
+Add parameters in your =project.clj=, some parameters are like this:
 
 #+BEGIN_SRC: clojure
 (defproject my-awesome-project "1.1.1"
-  :plugins [[carlzhc/lein-tar "3.3.0"
-            [lein-rpmbuild "X.X.X"]]
+  :plugins [[lein-rpmbuild "X.X.X"]
+            [carlzhc/lein-tar "X.X.X.X"]
   :rpmbuild {:Name  "RPM-PACKAGE-NAME" ;; Default is the project name.
              :Version "X.X.X"          ;; Default is the project version.
-             :Release "1"              ;; Default is "1%{?dist}".
-             :Source1 "PATH-TO-SOURCE" ;; Additional sources, support from Source1 to Source9.
-             :Requires ["RPM" ...]     ;; Dependencies of other RPM packages.
-             :Prefix "PATH"            ;; Destination directory of installation.
-             :%prep   "COMMANDS TO UNPACK THE SOURCES"    ;; Default is "%autosetup -v".
-             :%build  "COMMANDS TO BUILD PROJECT"         ;; Default is no command to run.
-             :%install "COMMANDS TO INSTALL FILES"        ;; Default is to copy all files in BUILDROOT folder into RPM.
-             :%files ["PATH-TO-FILE" ...]                 ;; Files which need to be packed to RPM.
-             :%doc ["FILE-NAME" ...]                      ;; Files to be packed as documentation, need to be in "pkg/" folder.
-             :%config ["FILE-NAME" ...]                   ;; Files to be packed as configuration.
-             :%pre  "COMMANDS TO RUN IN %pre SECTION"     ;; Default is no command to run.
-             :%post "COMMANDS TO RUN IN %post SECTION"    ;; Default is no command to run.
-             :%changelog ["RPM BUILD CHANGE LOG 1" ...] or [:gitlog latest-log-number]
-                                                          ;; When using :gitlog, it will get git log as RPM change log.
-             :%define [["VAR-NAME" "VAR-VALUE"] ...]      ;; Define additional macros
-             :%global [["VAR-NAME" "VAR-VALUE"] ...]      ;; Define additional global macros
-             :%undefine ["VAR-NAME" ...]                  ;; Undefine macros
+             :Release "1%{?dist}"      ;; Default is "1%{?dist}".
+             :Source1 "PATH-TO-SOURCE" ;; Additional sources, support from Source1 to Source9, default is none.
+             :Requires ["RPM" ...]     ;; Dependencies of other RPM packages, default is none.
+             :Prefix "PATH"            ;; Destination directory of installation, default is "/"
+             :%prep   ["COMMANDS" ...]              ;; Default is "%autosetup -v".
+             :%build  ["COMMANDS" ...]              ;; Default is no command to run.
+             :%install ["COMMANDS" ...]             ;; Default is to copy all files in BUILDROOT folder into RPM.
+             :%files ["PATH-TO-FILE" ...]           ;; Files which need to be packed to RPM,
+                                                    ;;   default is all files in "pkg" folder and generated jars.
+             :%doc ["FILE-NAME" ...]                ;; Files to be packed as documentation, need to be in "pkg/" folder, default is none.
+             :%config ["FILE-NAME" ...]             ;; Files to be packed as configuration, default is none.
+             :%pre ["RUN IN %pre SECTION" ...]      ;; Default is no command to run.
+             :%post ["RUN IN %post SECTION" ...]    ;; Default is no command to run.
+             :%changelog ["CHANGE LOG 1" ...]       ;; Default is no changelog, git log can be used here:
+                                                    ;;   :gitlog - use git log as changelog
+                                                    ;;   :gittag - use git annotated tags as changelog
+             :%define ["NAME" "VALUE" ...]          ;; Define additional macros
+             :%global ["NAME" "VALUE" ...]          ;; Define additional global macros
+             :%undefine ["VAR-NAME" ...]            ;; Undefine macros
    })
 #+END_SRC
+
+Almost all tags and common macros from RPM spec file can be used as keyword here.
+
+All of these parameters can be omited if the default value meets your need.
 
 To build RPM package, run:
 
