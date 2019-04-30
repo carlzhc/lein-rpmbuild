@@ -9,7 +9,23 @@
   "Generate changelog from git log"
   []
   (let [result (shell/sh "git" "log" "--pretty=format:* %ad %an <%ae> - %h %n- %s%n" "--date=format:%a %b %d %Y")]
-    (if (zero? (:exit result)) (:out result) nil)))
+    (if (zero? (:exit result)) (:out result)
+        (lein/abort "Failed to run git log"))))
+
+(defn- gittag
+  "Generate changelog from git annotated tags"
+  []
+  (let [result (shell/sh
+                "git" "for-each-ref"
+                (str "--format="
+                     "%(if)%(taggerdate)%(then)"
+                     "* %(taggerdate:format:%a %b %d %Y) %(taggername) "
+                     "%(taggeremail) - %(refname:short)%0a"
+                     "- %(subject) "
+                     "%(body)%(end)")
+                "refs/tags")]
+    (if (zero? (:exit result)) (:out result)
+        (lein/abort "Failed to run git for-each-ref"))))
 
 (defn- join-with
   [s acol]
@@ -150,9 +166,12 @@
 
       (when %changelog
         (.newLine spec)
-        (if (= :gitlog %changelog)
-          (.write spec (format "%%changelog\n%s\n" (gitlog)))
-          (.write spec (format "%%changelog\n%s\n" (join-with-newline %changelog))))))
+        (.write spec "%changelog\n")
+        (.write spec
+                (condp = %changelog
+                  :gitlog (gitlog)
+                  :gittag (gittag)
+                  (join-with-newline %changelog)))))
 
     (lein/info "Wrote" (.getCanonicalPath specfile))
     (assoc-in project [:rpmbuild :spec] (.getCanonicalPath specfile))))
