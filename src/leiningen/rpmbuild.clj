@@ -3,18 +3,65 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.java.shell :as shell]
-            [leiningen.tar :as tar]))
+            [leiningen.tar :as tar])
+  (:import java.lang.System
+           java.io.File))
 
-(defn- gitlog
-  "Generate changelog from git log"
+(defn- file-exists?
+  "Check file existence"
+  [file]
+  (->> file
+       (new File)
+       (.exists)))
+
+(defn- file-exists-in-path?
+  "Check file existents in PATH"
+  [file]
+  (some identity (filter file-exists?
+                   (map #(str % "/" file)
+                        (str/split (System/getenv "PATH") #":")))))
+
+(defn- git-version
+  "Check git version"
   []
-  (let [result (shell/sh "git" "log" "--pretty=format:* %ad %an <%ae> - %h %n- %s%n" "--date=format:%a %b %d %Y")]
-    (if (zero? (:exit result)) (:out result)
-        (lein/abort "Failed to run git log"))))
+  (if-let [git (file-exists-in-path? "git")]
+    (-> (shell/sh git "--version")
+        (:out)
+        (str/trim)
+        (str/split #" ")
+        (last))
+    (lein/abort "Error: command not found: git")))
+
+(defn- version-compare
+  "Compare 2 version number"
+  [v1 v2]
+  (loop [pv1 (str/split v1 #"[.]")
+         pv2 (str/split v2 #"[.]")]
+    (cond
+      (= pv1 pv2) 0
+      (nil? pv1) -1
+      (nil? pv2) 1
+      :else
+      (let [iv1 (Integer. (first pv1))
+            iv2 (Integer. (first pv2))]
+        (cond
+          (= iv1 iv2) (recur (next pv1) (next pv2))
+          (< iv1 iv2) -1
+          (> iv1 iv2) 1
+          )))))
+
+(defn- git-version-validate
+  "Check the minimum required version of git"
+  []
+  (if-let [gitver (git-version)]
+    (if (>= (version-compare gitver "2.6.0") 0) true
+        (lein/abort "Error: version required: git version 2.6.0 or greater"))
+    (lein/abort "Error: version unknown: git")))
 
 (defn- gittag
   "Generate changelog from git annotated tags"
   []
+  (git-version-validate)
   (let [result (shell/sh
                 "git" "for-each-ref"
                 (str "--format="
@@ -25,7 +72,15 @@
                      "%(body)%(end)")
                 "refs/tags")]
     (if (zero? (:exit result)) (:out result)
-        (lein/abort "Failed to run git for-each-ref"))))
+        (lein/abort "Error: failed to run command: git for-each-ref"))))
+
+(defn- gitlog
+  "Generate changelog from git log"
+  []
+  (git-version-validate)
+  (let [result (shell/sh "git" "log" "--pretty=format:* %ad %an <%ae> - %h %n- %s%n" "--date=format:%a %b %d %Y")]
+    (if (zero? (:exit result)) (:out result)
+        (lein/abort "Error: failed to run command: git log"))))
 
 (defn- join-with
   [s acol]
@@ -187,12 +242,14 @@
         result (shell/sh "rpmbuild" act tarball)]
     (if (zero? (:exit result))
       (lein/info (:out result))
-      (lein/abort (:err result)))))
+      (lein/abort (str "Error: command failed: rpmbuild\n" (:err result))))))
 
 (defn rpmbuild
   "Build RPM package from project's files"
   [project & args]
   (let [options (:rpmbuild project)]
+    (when-not (file-exists-in-path? "rpmbuild")
+      (lein/abort "Error: command not found: rpmbuild"))
     (condp = (first args)
       "-spec" (gen-spec project options)
       "-tar" (-> project
@@ -210,4 +267,4 @@
                 (gen-spec options)
                 (maketarball)
                 (buildrpm "-ts"))
-      (lein/warn "Error: one option needed from \"-ta\", \"-tb\", \"-ts\" or \"-spec\""))))
+      (lein/warn "Error: option needed: one of \"-ta\", \"-tb\", \"-ts\" \"-spec\""))))
