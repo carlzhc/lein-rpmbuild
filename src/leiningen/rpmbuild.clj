@@ -10,21 +10,19 @@
 (defn- file-exists?
   "Check file existence"
   [file]
-  (->> file
-       (new File)
-       (.exists)))
+  (.exists (File. file)))
 
-(defn- file-exists-in-path?
-  "Check file existents in PATH"
+(defn- file-in-path
+  "Find the first file on each path included in the PATH environment variable"
   [file]
-  (some identity (filter file-exists?
+  (first (filter file-exists?
                    (map #(str % "/" file)
                         (str/split (System/getenv "PATH") #":")))))
 
 (defn- git-version
   "Check git version"
   []
-  (if-let [git (file-exists-in-path? "git")]
+  (if-let [git (file-in-path "git")]
     (-> (shell/sh git "--version")
         (:out)
         (str/trim)
@@ -33,7 +31,8 @@
     (lein/abort "Error: command not found: git")))
 
 (defn- version-compare
-  "Compare 2 version number"
+  "Compare 2 version number in format x.y.z...
+  Return -1 if v1 < v2, 0 if v1 = v2, 1 otherwise"
   [v1 v2]
   (loop [pv1 (str/split v1 #"[.]")
          pv2 (str/split v2 #"[.]")]
@@ -55,8 +54,8 @@
   []
   (if-let [gitver (git-version)]
     (if (>= (version-compare gitver "2.6.0") 0) true
-        (lein/abort "Error: version required: git version 2.6.0 or greater"))
-    (lein/abort "Error: version unknown: git")))
+        (lein/abort "Error: git version: requires 2.6.0 or greater"))
+    (lein/abort "Error: git version: unknown")))
 
 (defn- gittag
   "Generate changelog from git annotated tags"
@@ -248,7 +247,7 @@
   "Build RPM package from project's files"
   [project & args]
   (let [options (:rpmbuild project)]
-    (when-not (file-exists-in-path? "rpmbuild")
+    (when-not (file-in-path "rpmbuild")
       (lein/abort "Error: command not found: rpmbuild"))
     (condp = (first args)
       "-spec" (gen-spec project options)
