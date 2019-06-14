@@ -7,7 +7,7 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :eval-in-leiningen true
   :plugins [[carlzhc/lein-tar "3.3.0.1"]
-            [lein-rpmbuild "0.1.3"]]
+            [lein-rpmbuild "0.1.4"]]
   :tar {:ubergar true
         :format :tar-gz}
   :rpmbuild {:%define ["__os_install_post" "%{nil}"]
