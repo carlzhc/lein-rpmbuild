@@ -106,7 +106,7 @@
   [project
    {:keys [Name Version Release Summary Group License URL BuildArch BuildRoot Prefix Requires
            Source Source0 Source1 Source2 Source3 Source4 Source5 Source6 Source7 Source8 Source9
-           %description %prep %build %check %install %clean %post %files %changelog %doc %config %defattr
+           %description %prep %build %check %install %clean %post %files %changelog %doc %config %ghost %defattr
            %define %undefine %global]
     :as options}]
   (let [pkg (io/file (:root project) "pkg")
@@ -151,28 +151,23 @@
         (doseq [r Requires]
           (.write spec (format-tag "Requires" r))))
 
-      (.newLine spec)
-      (.write spec (format "%%description\n%s\n"
+      (.write spec (format "\n%%description\n%s\n"
                            (join-with-newline (or %description (:description project)))))
 
-      (.newLine spec)
-      (.write spec (format "%%prep\n%s\n"
+      (.write spec (format "\n%%prep\n%s\n"
                            (join-with-newline (or %prep ["%autosetup -v"]))))
 
       (when %build
-        (.newLine spec)
-        (.write spec (format "%%build\n%s\n"
+        (.write spec (format "\n%%build\n%s\n"
                              (join-with-newline %build))))
 
       (when %check
-        (.newLine spec)
-        (.write spec (format "%%check\n%s\n"
+        (.write spec (format "\n%%check\n%s\n"
                              (join-with-newline %check))))
 
-      (.newLine spec)
       (.write spec
               (format
-               "%%install\n%s\n"
+               "\n%%install\n%s\n"
                (join-with-newline
                 (or %install
                     (->
@@ -186,20 +181,17 @@
                      (concat [(str  "find $RPM_BUILD_ROOT -type f -printf '/%%P\\n'"
                                     " > %{u2p:%{buildroot}}.filelist")]))))))
 
-      (.newLine spec)
       (.write spec
               (format
-               "%%clean\n%s\n"
+               "\n%%clean\n%s\n"
                (join-with-newline
                 (or %clean
                     ["rm -rf $RPM_BUILD_ROOT %{u2p:%{buildroot}}.filelist"]))))
 
       (when %post
-        (.newLine spec)
-        (.write spec (format "%%post\n%s\n" (join-with-newline %post))))
+        (.write spec (format "\n%%post\n%s\n" (join-with-newline %post))))
 
-      (.newLine spec)
-      (.write spec (format "%%files%s\n%%defattr(%s)\n%s\n"
+      (.write spec (format "\n%%files%s\n%%defattr(%s)\n%s\n"
                            (or %files " -f %{u2p:%{buildroot}}.filelist")
                            (join-with "," (or %defattr ["-" "root" "root" "-"]))
                            (join-with-newline (str %files))))
@@ -216,16 +208,21 @@
       (when %config
         (.write spec (if (string? %config)
                        (format "%%config %s\n" %config)
-                       (join-with-newline (map #(format "%%config %s" %) %config)))))
+                       (str/join "" (map #(format "%%config %s\n" %) %config)))))
+
+      (when %ghost
+        (.write spec (if (string? %ghost)
+                       (format "%%ghost %s\n" %ghost)
+                       (str/join "" (map #(format "%%ghost %s\n" %) %ghost)))))
 
       (when %changelog
-        (.newLine spec)
-        (.write spec "%changelog\n")
+        (.write spec "\n%changelog\n")
         (.write spec
                 (condp = %changelog
                   :gitlog (gitlog)
                   :gittag (gittag)
-                  (join-with-newline %changelog)))))
+                  (join-with-newline %changelog))))
+      (.newLine spec))
 
     (lein/info "Wrote" (.getCanonicalPath specfile))
     (assoc-in project [:rpmbuild :spec] (.getCanonicalPath specfile))))
