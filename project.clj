@@ -1,4 +1,4 @@
-(defproject lein-rpmbuild "0.1.6"
+(defproject lein-rpmbuild "0.1.7-SNAPSHOT"
   :description "Leiningen plugin for building an RPM package"
   :url "http://github.com/carlzhc/lein-rpmbuild"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
