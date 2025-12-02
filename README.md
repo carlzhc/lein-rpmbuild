@@ -1,42 +1,63 @@
-* lein-rpmbuild
+# Readme
+
+[lein-rpmbuild](#org98f5d6f)
+    1.  [Requirements](#org23b9822)
+    2.  [Insatllation](#org42d85ed)
+    3.  [Dependencies](#orgf113a08)
+    4.  [Usage](#org1f2ecb6)
+    5.  [License](#org4d211e5)
+
+
+<a id="org98f5d6f"></a>
+
+# lein-rpmbuild
 
 A Leiningen plugin to build project into RPM package.
 
-** Requirements
 
-Make sure you have =rpm-build= installed.
+<a id="org23b9822"></a>
+
+## Requirements
+
+Make sure you have `rpm-build` installed.
 You can install it by running below command in your CentOS/RHEL:
 
-  : yum install -y rpm-build
-
+    yum install -y rpm-build
 
 To use git log as RPM's changelog, you need to use git version 2.6.0 or above.
 Use below commands to update the git package to the latest version in your CentOS/RHEL:
 
-  : sudo yum remove -y git
-  : sudo yum -y install https://centos7.iuscommunity.org/ius-release.rpm
-  : sudo yum -y install git2u-all
+    sudo yum remove -y git
+    sudo yum -y install https://centos7.iuscommunity.org/ius-release.rpm
+    sudo yum -y install git2u-all
 
 
+<a id="org42d85ed"></a>
 
-** Insatllation
+## Insatllation
 
-Add the following to the =:plugins= vector of your =project.clj=.
+Add the following to the `:plugins` vector of your `project.clj`.
 
-[[https://clojars.org/lein-rpmbuild][https://img.shields.io/clojars/v/lein-rpmbuild.svg]]
+[![img](https://img.shields.io/clojars/v/lein-rpmbuild.svg)](https://clojars.org/lein-rpmbuild)
 
-** Dependencies
 
-This plugin also uses =lein-tar= plugin to make a tarball before making a RPM.
-Add below dependency to the =:plugins= vector of your =project.clj=.
+<a id="orgf113a08"></a>
 
-[[https://clojars.org/carlzhc/lein-tar][https://img.shields.io/clojars/v/carlzhc/lein-tar.svg]]
+## Dependencies
 
-** Usage
+This plugin also uses `lein-tar` plugin to make a tarball before making a RPM.
+Add below dependency to the `:plugins` vector of your `project.clj`.
 
-Add parameters in your =project.clj=, some parameters are like this:
+[![img](https://img.shields.io/clojars/v/carlzhc/lein-tar.svg)](https://clojars.org/carlzhc/lein-tar)
 
-#+BEGIN_SRC: clojure
+
+<a id="org1f2ecb6"></a>
+
+## Usage
+
+Add parameters in your `project.clj`, some parameters are like this:
+
+```
 (defproject my-awesome-project "1.1.1"
   :plugins [[lein-rpmbuild "X.X.X"]
             [carlzhc/lein-tar "X.X.X.X"]
@@ -51,7 +72,7 @@ Add parameters in your =project.clj=, some parameters are like this:
              :%install ["COMMANDS" ...]             ;; Default is to copy all files in BUILDROOT folder into RPM.
              :%files ["PATH-TO-FILE" ...]           ;; Files which need to be packed to RPM,
                                                     ;;   default is all files in "pkg" folder and generated jars.
-             :%doc ["FILE-NAME" ...]                ;; Files to be packed as documentation, need to be in "pkg/" folder, default is none.
+             :%doc ["FILE-NAME" ...]                ;; Files to be packed as documentation, need to be in "pkg*" folder, default is none.
              :%config ["FILE-NAME" ...]             ;; Files to be packed as configuration, default is none.
              :%pre ["RUN IN %pre SECTION" ...]      ;; Default is no command to run.
              :%post ["RUN IN %post SECTION" ...]    ;; Default is no command to run.
@@ -62,7 +83,7 @@ Add parameters in your =project.clj=, some parameters are like this:
              :%global ["NAME" "VALUE" ...]          ;; Define additional global macros
              :%undefine ["VAR-NAME" ...]            ;; Undefine macros
    })
-#+END_SRC
+```
 
 Almost all tags and common macros from RPM spec file can be used as keyword here.
 
@@ -70,29 +91,37 @@ All of these parameters can be omited if the default value meets your need.
 
 To build RPM package, run:
 
-- Build binary package only:
-  : lein rpmbuild -tb
+-   Build binary package only:
+    
+    `lein rpmbuild -tb`
 
-- Build source package only:
-  : lein rpmbuild -ts
+-   Build source package only:
+    
+    `lein rpmbuild -ts`
 
-- Build both binary and source packages:
-  : lein rpmbuild -ta
+-   Build both binary and source packages:
+    
+    `lein rpmbuild -ta`
 
-- Create rpm spec file only:
-  : lein rpmbuild -spec
+-   Create rpm spec file only:
+    
+    `lein rpmbuild -spec`
 
-The SPEC file is created in =pkg= folder, and the RPM packages are generated in =~/rpmbuild/RPMS/= folder.
+The SPEC file is created in `pkg` folder, and the RPM packages are generated in `~/rpmbuild/RPMS/` folder.
 
-** License
+
+<a id="org4d211e5"></a>
+
+## License
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
+<http://www.eclipse.org/legal/epl-2.0>.
 
 This Source Code may also be made available under the following Secondary
 Licenses when the conditions for such availability set forth in the Eclipse
 Public License, v. 2.0 are satisfied: GNU General Public License as published by
 the Free Software Foundation, either version 2 of the License, or (at your
 option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
+at <https://www.gnu.org/software/classpath/license.html>.
+
